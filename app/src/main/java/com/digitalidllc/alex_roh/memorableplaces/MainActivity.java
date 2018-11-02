@@ -2,22 +2,30 @@ package com.digitalidllc.alex_roh.memorableplaces;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.sax.StartElementListener;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.google.android.gms.maps.model.LatLng;
+
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -28,8 +36,9 @@ public class MainActivity extends AppCompatActivity {
     private ArrayAdapter<FavoritePlace> arrayAdapter;
     private LocationManager locationManager;
     private LocationListener locationListener;
+    private static final int mapRequestCode = 1;
 
-    class FavoritePlace {
+    static class FavoritePlace {
         private Location mPlace;
         private String mAddress;
 
@@ -87,8 +96,7 @@ public class MainActivity extends AppCompatActivity {
                             address.append(addressesList.get(0).getAdminArea());
                         }
 
-                        Toast.makeText(MainActivity.this, address.toString(), Toast.LENGTH_SHORT).show();
-                        Log.i("Address: ", address.toString());
+                       Log.i("Address: ", address.toString());
 
                         updateCurrentLocation(location, address.toString());
                     } else {
@@ -120,9 +128,9 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
         } else {
             startLocationListen();
-            //set up list
-            setUpListView();
         }
+        //set up list
+        setUpListView();
     }
 
     @Override
@@ -130,6 +138,29 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             startLocationListen();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode == mapRequestCode && resultCode==RESULT_OK){
+            if(data==null) Log.e("Data is empty!!!!","no!!!!");
+            ArrayList<String>  latitudes =  data.getStringArrayListExtra("latitudes");
+            ArrayList<String>  longitudes =  data.getStringArrayListExtra("longitudes");
+            ArrayList<String> addresses = data.getStringArrayListExtra("addresses");
+
+            for(int i=0; i<latitudes.size();++i){
+                Location newPlace = new Location(LocationManager.GPS_PROVIDER);
+                newPlace.setLatitude(Double.parseDouble(latitudes.get(i)));
+                newPlace.setLongitude(Double.parseDouble(longitudes.get(i)));
+                Log.i("New Place Added", newPlace.toString());
+                FavoritePlace favoritePlace = new FavoritePlace(newPlace, addresses.get(i));
+
+                placesList.add(favoritePlace);
+            }
+
+            refreshList();
         }
     }
 
@@ -156,6 +187,25 @@ public class MainActivity extends AppCompatActivity {
         placesLV = findViewById(R.id.placesLV);
         arrayAdapter = new ArrayAdapter<FavoritePlace>(this, android.R.layout.simple_list_item_1,placesList);
         placesLV.setAdapter(arrayAdapter);
+
+        //set up onclick
+        placesLV.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                double latitude = placesList.get(i).getLocation().getLatitude();
+                double longitude = placesList.get(i).getLocation().getLongitude();
+                String address = placesList.get(i).getAddress();
+
+                Intent mapIntent = new Intent(getApplicationContext(), MapsActivity.class);
+                mapIntent.putExtra("latitude", latitude);
+                mapIntent.putExtra("longitude", longitude);
+                mapIntent.putExtra("address", address);
+
+                startActivityForResult(mapIntent, mapRequestCode);
+            }
+        });
+
+
     }
 
     private void startLocationListen(){
