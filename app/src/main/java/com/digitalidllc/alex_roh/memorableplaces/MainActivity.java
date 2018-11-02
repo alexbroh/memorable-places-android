@@ -135,7 +135,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void setUpListView() {
         placesList = new ArrayList<>();
-        //add current location as first element
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
@@ -147,6 +146,8 @@ public class MainActivity extends AppCompatActivity {
             // for ActivityCompat#requestPermissions for more details.
             return;
         }
+
+        //add current location as first element
         Location lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
         FavoritePlace currentPlace = new FavoritePlace(lastKnownLocation, "Find a place...");
         placesList.add(currentPlace);
