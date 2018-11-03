@@ -3,6 +3,7 @@ package com.digitalidllc.alex_roh.memorableplaces;
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -25,6 +26,7 @@ import android.widget.Toast;
 
 import com.google.android.gms.maps.model.LatLng;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
             return mAddress;
         }
 
-        public FavoritePlace(Location place, String address) {
+        public FavoritePlace(@NonNull Location place, @NonNull String address) {
             this.mPlace = place;
             this.mAddress = address;
         }
@@ -150,6 +152,17 @@ public class MainActivity extends AppCompatActivity {
             ArrayList<String>  longitudes =  data.getStringArrayListExtra("longitudes");
             ArrayList<String> addresses = data.getStringArrayListExtra("addresses");
 
+            //add to sharedprefs
+            SharedPreferences sharedPreferences = this.getSharedPreferences("com.digitalidllc.alex_roh.sharedpreferences", Context.MODE_PRIVATE);
+            try {
+                sharedPreferences.edit().putString("latitudes",ObjectSerializer.serialize(latitudes)).apply(); Log.i("new latitudes",ObjectSerializer.serialize(latitudes));
+                sharedPreferences.edit().putString("longitudes",ObjectSerializer.serialize(longitudes)).apply(); Log.i("new longitudes",ObjectSerializer.serialize(longitudes));
+                sharedPreferences.edit().putString("addresses",ObjectSerializer.serialize(addresses)).apply(); Log.i("new addresses",ObjectSerializer.serialize(addresses));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            //update local list
             for(int i=0; i<latitudes.size();++i){
                 Location newPlace = new Location(LocationManager.GPS_PROVIDER);
                 newPlace.setLatitude(Double.parseDouble(latitudes.get(i)));
@@ -182,6 +195,27 @@ public class MainActivity extends AppCompatActivity {
         Location lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
         FavoritePlace currentPlace = new FavoritePlace(lastKnownLocation, "Find a place...");
         placesList.add(currentPlace);
+
+        //retrieve data from sharedprefs
+        SharedPreferences sharedPreferences = this.getSharedPreferences("com.digitalidllc.alex_roh.sharedpreferences", Context.MODE_PRIVATE);
+        try{
+        ArrayList<String> storedLatitudes = (ArrayList<String>) ObjectSerializer.deserialize(sharedPreferences.getString("latitudes", ObjectSerializer.serialize(new ArrayList<String>()))); Log.i("stored latitudes", storedLatitudes.toString());
+        ArrayList<String> storedLongitudes = (ArrayList<String>) ObjectSerializer.deserialize(sharedPreferences.getString("longitudes", ObjectSerializer.serialize(new ArrayList<String>()))); Log.i("stored longitudes", storedLongitudes.toString());
+        ArrayList<String> storedAddresses = (ArrayList<String>) ObjectSerializer.deserialize(sharedPreferences.getString("addresses", ObjectSerializer.serialize(new ArrayList<String>()))); Log.i("stored addresses", storedAddresses.toString());
+
+            //update local list
+            for(int i=0; i<storedLatitudes.size();++i){
+                Location storedPlace = new Location(LocationManager.GPS_PROVIDER);
+                storedPlace.setLatitude(Double.parseDouble(storedLatitudes.get(i)));
+                storedPlace.setLongitude(Double.parseDouble(storedLongitudes.get(i)));
+                Log.i("Stored Place Added", storedPlace.toString());
+                FavoritePlace favoritePlace = new FavoritePlace(storedPlace, storedAddresses.get(i));
+
+                placesList.add(favoritePlace);
+            }
+        } catch(Exception e){
+            e.printStackTrace();
+        }
 
         //set up adapter
         placesLV = findViewById(R.id.placesLV);
